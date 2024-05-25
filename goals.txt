@@ -1,0 +1,43 @@
+Project Roadmap
+Stage 1:
+Create telegram bot 
+Manipulate the data
+Send a reply
+Upload to git
+
+Stage 2:
+Create algorithm to parse the string data into json file
+
+Stage 3:
+Use google calendar api to learn the kind of data that can be passed
+Fine tune algorithm for parsing string data
+
+Stage 4:
+Practice sending data back and forth
+
+Stage 5:
+Work on telegram bot features to explain different functionalities
+
+Stage 6:
+Work on different users signing in to google.
+
+Stage 7:
+Work on bugs
+
+Stage 8:
+Add more features to make bot experience better. E.g. adding other apis from notes or to do apps or others, adding telegram reminders, etc. 
+
+Stage ...:
+Update the algorithm for parsing string data with gemini. 
+This should also reach the point where it can communicate with other apis instead of google calendar without explicitly stating it.
+
+
+Started: 2:40 pm Tuesday 16th April, 2024. 
+
+Prompt 1:
+(I need the code for the backend for a project I'm working on. It's a big project so I'll give it to you one by one
+
+First of all, I need to connect to telegram api to create a bot that I can send a message to and the message reaches the backend as a json file that I can work on. Then I want it to send back as a message but with all the text capitlized
+
+Give me well commented code and explain what every part of the code does and how to use it properly)
+
