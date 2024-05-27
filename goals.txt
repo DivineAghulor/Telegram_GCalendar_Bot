@@ -17,6 +17,7 @@ Practice sending data back and forth
 
 Stage 5:
 Work on telegram bot features to explain different functionalities
+Also selection of date and time
 
 Stage 6:
 Work on different users signing in to google.
@@ -34,6 +35,7 @@ This should also reach the point where it can communicate with other apis instea
 
 Started: 2:40 pm Tuesday 16th April, 2024. 
 
+
 Prompt 1:
 (I need the code for the backend for a project I'm working on. It's a big project so I'll give it to you one by one
 
@@ -41,3 +43,13 @@ First of all, I need to connect to telegram api to create a bot that I can send 
 
 Give me well commented code and explain what every part of the code does and how to use it properly)
 
+
+Things that can be doen with google calendar:
+You can create different calendars for
+Academics (classes)
+Studying
+Personal
+Fitness
+Self care, etc.
+you can separate your life
+https://youtu.be/ZRThzZV1G7k
