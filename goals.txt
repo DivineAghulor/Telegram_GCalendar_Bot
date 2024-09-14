@@ -1,4 +1,11 @@
 Project Roadmap
+TO-DO:
+Gotta update access rules to the table and to the storage bucket. Make them private and add RLS
+Storage bucket url lasts only a year
+
+Learn how to use refresh tokens and google api reference here
+https://www.npmjs.com/package/googleapis
+
 Stage 1:
 Create telegram bot 
 Manipulate the data
