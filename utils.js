@@ -14,12 +14,19 @@ function convertToDatetime(dateStr, timeStr) {
     return isoString;
   }
   
+
+function extractId(text){
+  let lines = text.split('\n')
+  let id = lines[1].split(':')[1].trim()
+  return id
+}
 //   // Example usage:
 //   const dateStr = "27-05-24";
 //   const timeStr = "14-30";
 //   const googleCalendarDatetime = convertToGoogleCalendarDatetime(dateStr, timeStr);
   
 //   console.log(googleCalendarDatetime); // "2024-05-27T14:30:00.000Z"
+// console.log(extractId("Task addedd successfully.\nTask ID: NGJaZUVpdHZkb2VjV1pDbQ"))
 
   
-export {convertToDatetime};
+export {convertToDatetime, extractId};

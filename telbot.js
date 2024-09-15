@@ -4,6 +4,7 @@ import { message } from 'telegraf/filters';
 import dotenv from 'dotenv';
 import { getPaths, loadSavedCredentialsIfExist, saveCredentials, authorize, listEvents, listTasks, createTask, updateTask, deleteTask } from './start.js';
 import dayjs from 'dayjs';
+import { extractId } from './utils.js'
 
 const { BaseScene, Stage } = Scenes;
 
@@ -81,14 +82,25 @@ dateScene.on('text', async (ctx) => {
 
   console.log("Task added successfully");
 
-  ctx.reply(`Task addedd successfully.\nTask ID: ${res.id}`)
+  ctx.reply(`Task added successfully.\nTask ID: ${res.id}`)
 
   ctx.scene.leave()
   //pass the data in to createTask and test
 })
 
+
+//DELETE SCENE
+const deleteScene = new BaseScene('DELETE_SCENE');
+deleteScene.enter((ctx) => ctx.reply("Copy and Paste the message I sent when you created the function.\nIt's in the format:\n\n\"Task added successfully.\nTask ID: NGJaZUVpdHZkb2VjV1pDbQ\""))
+deleteScene.on('text', async (ctx) => {
+  const taskId = extractId(ctx.message.text)
+  const res = await taskDelete(ctx.chat.id, taskId)
+  ctx.reply(res);
+})
+
+
 //MIDDLEWARE INITIALIZATION
-const stage = new Stage([createScene, dateScene]);
+const stage = new Stage([createScene, dateScene, deleteScene]);
 
 bot.use(session()); // Enable session middleware
 bot.use(stage.middleware()); // Enable scene middleware
@@ -98,12 +110,17 @@ bot.command('create', (ctx) => {
   ctx.scene.enter('CREATE_SCENE');
 })
 
-bot.command('update', async(ctx)=>{
-    return null
+bot.command('update', (ctx)=>{
+  let reply = "Copy and Paste the message I sent when you created the function.\nIt's in the format:\n\n\"Task added successfully.\nTask ID: NGJaZUVpdHZkb2VjV1pDbQ\""
+  ctx.reply(reply)
+  const taskId = extractId(ctx.message.text)
+
+
+
 })
 
 bot.command('delete', async (ctx) => {
-    return null
+  ctx.scene.enter('DELETE_SCENE');
 })
 
 //Command functions definition
@@ -126,6 +143,23 @@ async function taskCreate(userId, payload){
   const token = await authorize(userId)
   const res = await createTask(token, payload).catch(console.error);
   return res;
+}
+
+//THIS IS NOT COMPLETE
+async function taskUpdate(userId, taskId, payload){
+  const token = await authorize(userId)
+  const res = await updateTask(token, taskId, payload).catch(console.error);
+  return res;
+}
+
+async function taskDelete(userId, taskId){
+  const token = await authorize(userId);
+  try {
+    const res = await deleteTask(token, taskId);
+    return res;
+  } catch (error) {
+    return "Problem encountered while deleting task";
+  }
 }
 
 
