@@ -1,78 +1,102 @@
 //TELEGRAM BOT FROM TELEGRAF NODE LIBRARY
-import{ Telegraf } from 'telegraf';
+import{ Telegraf, Scenes, session } from 'telegraf';
 import { message } from 'telegraf/filters';
 import dotenv from 'dotenv';
 import { getPaths, loadSavedCredentialsIfExist, saveCredentials, authorize, listEvents, listTasks, createTask, updateTask, deleteTask } from './start.js';
+import dayjs from 'dayjs';
 
+const { BaseScene, Stage } = Scenes;
 
 dotenv.config()
 
 const bot = new Telegraf(process.env.BOT_TOKEN)
 //Bot processes and commands
-bot.start((ctx) => ctx.reply('Welcome\nType \\signin to get started '))
-bot.help((ctx) => ctx.reply('Send me a sticker'))
-bot.on(message('sticker'), (ctx) => ctx.reply('👍'))
-bot.hears('hi', (ctx) => ctx.reply('Hey there'))
+bot.start((ctx) => ctx.reply('Welcome\nType \\signin to get started '));
 
+bot.help((ctx) => ctx.reply('Send me a sticker'));
+
+bot.on(message('sticker'), (ctx) => ctx.reply('👍'));
+
+bot.hears('hi', (ctx) => ctx.reply('Hey there'));
+
+//Sign In command - uses sign in function to authorize and return first 10 tasks
 bot.command('signin', async (ctx) => ctx.reply(await signIn(ctx.chat.id)));
 
-// bot.on('text', (ctx) => {
-//     const receivedText = ctx.message.text; // Full text of the message
-//     const [command, ...args] = receivedText.split(' '); // Splitting by space
-    
-//     console.log(`Command: ${command}`); // "/list"
-//     console.log(`Arguments: ${args.join(' ')}`); // "50 items"
-    
-//     ctx.reply(`Command: ${command}, Arguments: ${args.join(' ')}`);
-//   });
-  
+//List Tasks command (Read operation) - uses tasksList function which accepts chat id and an integer to return that number of tasks
 bot.command('listTasks', async (ctx) => {
     const receivedText = ctx.message.text;
     const [command, ...args] = receivedText.split(' ');
     ctx.reply(await tasksList(ctx.chat.id, args[0]));
 })
 
-bot.command('create', (ctx) => {
-    ctx.reply('Please enter your text. The first line will be the title, and the rest will be the body.');
-    
-    // Listen for the next message to get the text input
-    bot.on('text', async (ctx) => {
-      const text = ctx.message.text;
-      const lines = text.split('\n'); // Split the input text by new line
-      
-      const title = lines[0]; // First line is the title
-      const body = lines.slice(1).join('\n'); // Remaining lines are the body
-      
-      // Save title and body in the session state
-      ctx.session = { title, body };
-      console.log("step 1")
-      // Step 2: Prompt for Date Input
-      await ctx.reply('Please enter a date (YYYY-MM-DD):');
-      console.log("step 2")
-      // Listen for the next message to get the date input
-      bot.on('text', async (ctx) => {
-        console.log("step 3")
-        const date = ctx.message.text; // User input date
-        console.log(date)
-        // Validate date format (optional)
-        if (!/\d{4}-\d{2}-\d{2}/.test(date)) {
-          return ctx.reply('Invalid date format. Please use YYYY-MM-DD format.');
-        }
-        
-        // Step 3: Store Title, Body, and Date in a JSON Object
-        const result = {
-          title: ctx.session.title,
-          body: ctx.session.body,
-          date,
-        };
-        
-        console.log(result)
-        // Output the JSON object
-        ctx.reply(`Stored Data:\n${JSON.stringify(result, null, 2)}`);
-      });
-    });
-  });
+//CREATE SCENE. This is the entry point for the createTask command. It enters into the DATE SCENE
+const createScene = new BaseScene('CREATE_SCENE');
+createScene.enter((ctx) => ctx.reply('Add a Task\nPlease enter your text. The first line will be the title, and the rest will be the body.'));
+createScene.on('text', (ctx) =>{
+  // Listen for the next message to get the text input
   
+  const text = ctx.message.text;
+  const lines = text.split('\n'); // Split the input text by new line
+    
+  const title = lines[0]; // First line is the title
+  const body = lines.slice(1).join('\n'); // Remaining lines are the body
+    
+    // Save title and body in the session state
+  ctx.session.title = title;
+  ctx.session.body = body;
+
+  console.log("step 1")
+
+  ctx.scene.enter('DATE_SCENE')
+   // Step 2: Prompt for Date Input
+  console.log("step 2")
+   // Listen for the next message to get the date input
+    
+});
+
+//DATE SCENE. This holds the data and calls the taskCreate function which returns the created task in JSON
+const dateScene = new BaseScene('DATE_SCENE');
+dateScene.enter((ctx) => ctx.reply('Select date. Or type in YYYY-MM-DD format'));
+dateScene.on('text', async (ctx) => {
+  console.log("step 3 - date scene")
+  const date = ctx.message.text; // User input date
+  console.log(date)
+  // Validate date format (optional)
+  if (!/\d{4}-\d{2}-\d{2}/.test(date)) {
+    return ctx.reply('Invalid date format. Please use YYYY-MM-DD format.');
+  }
+
+  ctx.session.date = date
+  const reply = `Title: ${ctx.session.title} \nDue date: ${ctx.session.date}`
+  console.log(reply)
+  ctx.reply(reply)
+
+  const req = {//payload to be passed itno createTask function
+    title: ctx.session.title,
+    notes: ctx.session.body,
+    due: dayjs(ctx.session.date).format('YYYY-MM-DDTHH:mm:ssZ')
+  }
+
+  const res = await taskCreate(ctx.chat.id, req);
+
+  console.log("Task added successfully");
+
+  ctx.reply(`Task addedd successfully.\nTask ID: ${res.id}`)
+
+  ctx.scene.leave()
+  //pass the data in to createTask and test
+})
+
+//MIDDLEWARE INITIALIZATION
+const stage = new Stage([createScene, dateScene]);
+
+bot.use(session()); // Enable session middleware
+bot.use(stage.middleware()); // Enable scene middleware
+
+
+bot.command('create', (ctx) => {
+  ctx.scene.enter('CREATE_SCENE');
+})
 
 bot.command('update', async(ctx)=>{
     return null
@@ -90,10 +114,19 @@ async function signIn(userId){
 }
 
 async function tasksList(userId, maxRes) {
-    const res = await listTasks(userId, parseInt(maxRes)).catch(console.error);
+    //wtf am I passing in userId instead of the actual auth object from the authorize() function
+    //How on earth was it even working before. Cos I know I typed this myself.
+    const token = await authorize(userId);
+    const maxResInt = parseInt(maxRes);
+    const res = await listTasks(token, !isNaN(maxResInt) ? maxResInt : 10).catch(console.error);
     return res
 }
 
+async function taskCreate(userId, payload){
+  const token = await authorize(userId)
+  const res = await createTask(token, payload).catch(console.error);
+  return res;
+}
 
 
 

@@ -70,6 +70,9 @@ async function deleteToken(userid){
     }
   }
 
-const credData = await fetchData(cred_storage_url)
+
+//REMOVE THIS AND UNCOMMENT THE ONE BELOW WHEN DEPLOYING!!!
+const credData = ""
+// const credData = await fetchData(cred_storage_url)
 
 export { fetchToken, createToken, updateToken, deleteToken, credData};

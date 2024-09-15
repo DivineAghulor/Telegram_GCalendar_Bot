@@ -6,6 +6,13 @@ Storage bucket url lasts only a year
 Learn how to use refresh tokens and google api reference here
 https://www.npmjs.com/package/googleapis
 
+The date scene should be changed to include date selector
+
+There should be inline buttons under the "Task Added Successfully" after creating a Task
+The buttons should include Completed (part of update), Update, Delete and Repeat. 
+Since the task id is returned, it just takes the last line and passes it as an argument to the update and delete functions
+This removes the need for a database to be storing user data.
+
 Stage 1:
 Create telegram bot 
 Manipulate the data
