@@ -163,6 +163,7 @@ async function deleteTask(auth, taskId) {
     task: taskId,
   });
   console.log('Task deleted');
+  return "Task deleted successfully";
 }
 
 
@@ -183,6 +184,10 @@ const newrequest2 =  {
   notes: "This was created from VS code 3 again",
   due: dayjs("2024-09-05").format('YYYY-MM-DDTHH:mm:ssZ'),
 }
+
+const updaterequest = {
+  due: dayjs("2024-09-24").format('YYYY-MM-DDTHH:mm:ssZ'),
+}
 // authorize(userId).then(listTasks).catch(console.error); It works, but I wanna do something different
 
 // try{
@@ -194,6 +199,13 @@ const newrequest2 =  {
 //   console.error(error)
 // }
 
+// try{
+//   const token = await authorize(userId);
+//   const id = "TVBPaDM5cE5JRWFFOHdHLQ"
+//   updateTask(token, id, updaterequest);
+// } catch (error) {
+//   console.error(error)
+// }
 
 
 

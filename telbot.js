@@ -5,12 +5,19 @@ import dotenv from 'dotenv';
 import { getPaths, loadSavedCredentialsIfExist, saveCredentials, authorize, listEvents, listTasks, createTask, updateTask, deleteTask } from './start.js';
 import dayjs from 'dayjs';
 import { extractId } from './utils.js'
+import {Calendar} from 'telegram-inline-calendar';
 
 const { BaseScene, Stage } = Scenes;
 
 dotenv.config()
 
 const bot = new Telegraf(process.env.BOT_TOKEN)
+const calendar = new Calendar(bot, {
+  date_format: 'YYYY-MM-DD',
+  language: 'en',
+  bot_api: 'telegraf'
+});
+
 //Bot processes and commands
 bot.start((ctx) => ctx.reply('Welcome\nType \\signin to get started '));
 
@@ -57,7 +64,11 @@ createScene.on('text', (ctx) =>{
 
 //DATE SCENE. This holds the data and calls the taskCreate function which returns the created task in JSON
 const dateScene = new BaseScene('DATE_SCENE');
-dateScene.enter((ctx) => ctx.reply('Select date. Or type in YYYY-MM-DD format'));
+dateScene.enter((ctx) => {
+  calendar.startNavCalendar(ctx);
+  ctx.reply('Select date. Or type in YYYY-MM-DD format')
+}
+);
 dateScene.on('text', async (ctx) => {
   console.log("step 3 - date scene")
   const date = ctx.message.text; // User input date
@@ -72,7 +83,7 @@ dateScene.on('text', async (ctx) => {
   console.log(reply)
   ctx.reply(reply)
 
-  const req = {//payload to be passed itno createTask function
+  const req = {//payload to be passed into createTask function
     title: ctx.session.title,
     notes: ctx.session.body,
     due: dayjs(ctx.session.date).format('YYYY-MM-DDTHH:mm:ssZ')
@@ -87,6 +98,32 @@ dateScene.on('text', async (ctx) => {
   ctx.scene.leave()
   //pass the data in to createTask and test
 })
+dateScene.on("callback_query", async (ctx) => {
+  if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
+      let date;
+      date = calendar.clickButtonCalendar(ctx);
+      if (date !== -1) {
+          ctx.session.date = date;
+          const reply = `Title: ${ctx.session.title} \nDue date: ${ctx.session.date}`
+          console.log(reply)
+          ctx.reply(reply)
+      }
+  }
+  const req = {//payload to be passed into createTask function
+    title: ctx.session.title,
+    notes: ctx.session.body,
+    due: dayjs(ctx.session.date).format('YYYY-MM-DDTHH:mm:ssZ')
+  }
+
+  const res = await taskCreate(ctx.chat.id, req);
+
+  console.log("Task added successfully");
+
+  ctx.reply(`Task added successfully.\nTask ID: ${res.id}`)
+
+  ctx.scene.leave()
+  //pass the data in to createTask and test
+});
 
 
 //DELETE SCENE
@@ -114,9 +151,9 @@ bot.command('update', (ctx)=>{
   let reply = "Copy and Paste the message I sent when you created the function.\nIt's in the format:\n\n\"Task added successfully.\nTask ID: NGJaZUVpdHZkb2VjV1pDbQ\""
   ctx.reply(reply)
   const taskId = extractId(ctx.message.text)
-
-
-
+  //I've decided to hold off on this until I've added the inline buttons
+  //Check whether the request body for the update requires all the parameters
+  //I need to know so updating a single parameter isn't the literal same as creating a new one
 })
 
 bot.command('delete', async (ctx) => {
