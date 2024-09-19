@@ -1,5 +1,5 @@
 //TELEGRAM BOT FROM TELEGRAF NODE LIBRARY
-import{ Telegraf, Scenes, session } from 'telegraf';
+import{ Telegraf, Scenes, session, Markup } from 'telegraf';
 import { message } from 'telegraf/filters';
 import dotenv from 'dotenv';
 import { getPaths, loadSavedCredentialsIfExist, saveCredentials, authorize, listEvents, listTasks, createTask, updateTask, deleteTask } from './start.js';
@@ -37,6 +37,9 @@ bot.command('listTasks', async (ctx) => {
     ctx.reply(await tasksList(ctx.chat.id, args[0]));
 })
 
+
+//SCENES DEFINITION
+
 //CREATE SCENE. This is the entry point for the createTask command. It enters into the DATE SCENE
 const createScene = new BaseScene('CREATE_SCENE');
 createScene.enter((ctx) => ctx.reply('Add a Task\nPlease enter your text. The first line will be the title, and the rest will be the body.'));
@@ -62,13 +65,14 @@ createScene.on('text', (ctx) =>{
     
 });
 
+
 //DATE SCENE. This holds the data and calls the taskCreate function which returns the created task in JSON
 const dateScene = new BaseScene('DATE_SCENE');
 dateScene.enter((ctx) => {
   calendar.startNavCalendar(ctx);
   ctx.reply('Select date. Or type in YYYY-MM-DD format')
 }
-);
+); 
 dateScene.on('text', async (ctx) => {
   console.log("step 3 - date scene")
   const date = ctx.message.text; // User input date
@@ -93,11 +97,17 @@ dateScene.on('text', async (ctx) => {
 
   console.log("Task added successfully");
 
-  ctx.reply(`Task added successfully.\nTask ID: ${res.id}`)
+  ctx.reply(`Task added successfully.\nTask ID: ${res.id}`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Update', 'UPDATE_BUTTON')],
+      [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+    ])
+  )
 
   ctx.scene.leave()
   //pass the data in to createTask and test
 })
+
 dateScene.on("callback_query", async (ctx) => {
   if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
       let date;
@@ -119,11 +129,73 @@ dateScene.on("callback_query", async (ctx) => {
 
   console.log("Task added successfully");
 
-  ctx.reply(`Task added successfully.\nTask ID: ${res.id}`)
+  ctx.reply(`Task added successfully.\nTask ID: ${res.id}`, 
+    Markup.inlineKeyboard([
+    [Markup.button.callback('Update', 'UPDATE_BUTTON')],
+    [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+  ]))
 
   ctx.scene.leave()
   //pass the data in to createTask and test
 });
+
+
+//UPDATE SCENE
+const updateScene = new BaseScene('UPDATE_SCENE');
+updateScene.enter(async (ctx) => {
+  ctx.reply(`Updating\n\n${ctx.session.args.join(": ")}`);
+  if (ctx.session.args[0] === 'title'){
+    const req = {title: ctx.session.args[1]}
+    try{
+      const res = await taskUpdate(ctx.chat.id, ctx.session.taskId, req)
+
+      console.log("Task updated successfully");
+
+      ctx.reply(`Task updated successfully.\nTask ID: ${res.id}`, 
+        Markup.inlineKeyboard([
+        [Markup.button.callback('Update', 'UPDATE_BUTTON')],
+        [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+      ]))
+    } catch {
+      console.error();
+      ctx.reply("Failed to update task. Try again")
+    }
+  } else if (ctx.session.args[0] === 'notes'){
+    const req = {notes: ctx.session.args[1]}
+    try{
+      const res = await taskUpdate(ctx.chat.id, ctx.session.taskId, req)
+
+      console.log("Task updated successfully");
+
+      ctx.reply(`Task updated successfully.\nTask ID: ${res.id}`, 
+        Markup.inlineKeyboard([
+        [Markup.button.callback('Update', 'UPDATE_BUTTON')],
+        [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+      ]))
+    } catch {
+      console.error();
+      ctx.reply("Failed to update task. Try again")
+    }
+  } else if (ctx.session.args[0] === 'due'){
+    const req = {due: ctx.session.args[1]}
+    try{
+      const res = await taskUpdate(ctx.chat.id, ctx.session.taskId, req)
+
+      console.log("Task updated successfully");
+
+      ctx.reply(`Task updated successfully.\nTask ID: ${res.id}`, 
+        Markup.inlineKeyboard([
+        [Markup.button.callback('Update', 'UPDATE_BUTTON')],
+        [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+      ]))
+    } catch {
+      console.error();
+      ctx.reply("Failed to update task. Try again")
+    }
+  } 
+  ctx.scene.leave()
+})
+
 
 
 //DELETE SCENE
@@ -133,16 +205,18 @@ deleteScene.on('text', async (ctx) => {
   const taskId = extractId(ctx.message.text)
   const res = await taskDelete(ctx.chat.id, taskId)
   ctx.reply(res);
+  ctx.scene.leave()
 })
 
 
 //MIDDLEWARE INITIALIZATION
-const stage = new Stage([createScene, dateScene, deleteScene]);
+const stage = new Stage([createScene, dateScene, deleteScene, updateScene]);
 
 bot.use(session()); // Enable session middleware
 bot.use(stage.middleware()); // Enable scene middleware
 
 
+//BOT COMMAND HANDLERS
 bot.command('create', (ctx) => {
   ctx.scene.enter('CREATE_SCENE');
 })
@@ -150,15 +224,71 @@ bot.command('create', (ctx) => {
 bot.command('update', (ctx)=>{
   let reply = "Copy and Paste the message I sent when you created the function.\nIt's in the format:\n\n\"Task added successfully.\nTask ID: NGJaZUVpdHZkb2VjV1pDbQ\""
   ctx.reply(reply)
-  const taskId = extractId(ctx.message.text)
-  //I've decided to hold off on this until I've added the inline buttons
-  //Check whether the request body for the update requires all the parameters
-  //I need to know so updating a single parameter isn't the literal same as creating a new one
-})
+  const taskId = extractId(ctx.message.text)})
 
 bot.command('delete', async (ctx) => {
   ctx.scene.enter('DELETE_SCENE');
 })
+
+
+//BUTTON PRESS HANDLERS
+bot.action('UPDATE_BUTTON', (ctx) => {
+  ctx.reply('What would you like to Update',
+    Markup.inlineKeyboard([
+    [Markup.button.callback('Title', 'TITLE_UPDATE')],
+    [Markup.button.callback('Description', 'DESC_UPDATE')],
+    [Markup.button.callback('Date', 'DATE_UPDATE')],
+  ]))
+  ctx.session.taskId = extractId(ctx.callbackQuery.message.text)
+  console.log(ctx.session.taskId)
+  // ctx.session.args = []
+})
+
+bot.action('TITLE_UPDATE', (ctx) => {
+  ctx.reply('What would you like to update the title to?')
+  bot.on('text', (ctx) => {
+    // ctx.session.args.push(`title:${ctx.message.text}`)
+    ctx.session.args = ['title', `${ctx.message.text}`]
+    ctx.scene.enter('UPDATE_SCENE')
+  })
+})
+
+bot.action('DESC_UPDATE', (ctx) => {
+  ctx.reply('What would you like to update the description body to?')
+  bot.on('text', (ctx) => {
+    // ctx.session.args.push(`notes:${ctx.message.text}`)
+    ctx.session.args = ['notes', `${ctx.message.text}`]
+    ctx.scene.enter('UPDATE_SCENE')
+  })
+})
+
+bot.action('DATE_UPDATE', (ctx) => {
+  calendar.startNavCalendar(ctx);
+  ctx.reply('Select date or type in YYYY-MM-DD')
+
+  bot.on('text', (ctx) => {
+    if (!/\d{4}-\d{2}-\d{2}/.test(date)) {
+      return ctx.reply('Invalid date format. Please use YYYY-MM-DD format.');
+    }
+    // ctx.session.args.push(`due:${dayjs(ctx.message.text).format('YYYY-MM-DDTHH:mm:ssZ')}`)
+    ctx.session.args = ['due', `${dayjs(ctx.message.text).format('YYYY-MM-DDTHH:mm:ssZ')}`]
+    ctx.scene.enter('UPDATE_SCENE')
+  })
+
+  bot.on("callback_query", async(ctx) => {
+    if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
+      let date;
+      date = calendar.clickButtonCalendar(ctx);
+      if (date !== -1) {
+        // let datestr = `due:${dayjs(date).format('YYYY-MM-DDTHH:mm:ssZ')}`
+        ctx.session.args = ['due', `${dayjs(date).format('YYYY-MM-DDTHH:mm:ssZ')}`]
+      }
+    }
+    ctx.scene.enter('UPDATE_SCENE')
+  })
+})
+
+
 
 //Command functions definition
 //use functions for every single thing please
