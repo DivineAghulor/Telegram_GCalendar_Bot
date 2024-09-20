@@ -9,6 +9,8 @@ import {Calendar} from 'telegram-inline-calendar';
 
 const { BaseScene, Stage } = Scenes;
 
+
+
 dotenv.config()
 
 const bot = new Telegraf(process.env.BOT_TOKEN)
@@ -18,23 +20,35 @@ const calendar = new Calendar(bot, {
   bot_api: 'telegraf'
 });
 
+
+
 //Bot processes and commands
-bot.start((ctx) => ctx.reply('Welcome\nType \\signin to get started '));
+bot.start((ctx) => {
+  ctx.reply('Welcome\nPlease Sign-In with your google account to get started\nType \\signin or use the button below\n\ndisclaimer: this bot is not run by google inc.', 
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Sign-in with Google', 'SIGNIN')],
+    ]), 
+  )
+  });
 
-bot.help((ctx) => ctx.reply('Send me a sticker'));
+bot.help((ctx) => ctx.reply("Restart the bot and sign in to google account by sending '\\start'"));
 
-bot.on(message('sticker'), (ctx) => ctx.reply('👍'));
+// bot.on(message('sticker'), (ctx) => ctx.reply('👍'));
 
-bot.hears('hi', (ctx) => ctx.reply('Hey there'));
+bot.hears('hi', (ctx) => ctx.reply('Hey there. Type \\start to get started'));
 
 //Sign In command - uses sign in function to authorize and return first 10 tasks
-bot.command('signin', async (ctx) => ctx.reply(await signIn(ctx.chat.id)));
+bot.command('signin', async (ctx) => {
+  ctx.reply(await signIn(ctx.chat.id));
+  defaultReply(ctx)
+});
 
 //List Tasks command (Read operation) - uses tasksList function which accepts chat id and an integer to return that number of tasks
 bot.command('listTasks', async (ctx) => {
     const receivedText = ctx.message.text;
     const [command, ...args] = receivedText.split(' ');
     ctx.reply(await tasksList(ctx.chat.id, args[0]));
+    defaultReply(ctx)
 })
 
 
@@ -77,10 +91,18 @@ dateScene.on('text', async (ctx) => {
   console.log("step 3 - date scene")
   const date = ctx.message.text; // User input date
   console.log(date)
+  const currentDate = dayjs()
+  const dueDate = dayjs(date)
   // Validate date format (optional)
   if (!/\d{4}-\d{2}-\d{2}/.test(date)) {
     return ctx.reply('Invalid date format. Please use YYYY-MM-DD format.');
   }
+
+  if (dueDate.isBefore(currentDate, 'day')) {
+    // ctx.scene.enter('DATE_SCENE')
+    return ctx.reply('Invalid date entered. Please try the command again with a current or future date');
+  }
+
 
   ctx.session.date = date
   const reply = `Title: ${ctx.session.title} \nDue date: ${ctx.session.date}`
@@ -99,11 +121,12 @@ dateScene.on('text', async (ctx) => {
 
   ctx.reply(`Task added successfully.\nTask ID: ${res.id}`,
     Markup.inlineKeyboard([
-      [Markup.button.callback('Update', 'UPDATE_BUTTON')],
-      [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+      [Markup.button.callback('Update', 'UPDATE_BUTTON'),
+      Markup.button.callback('Delete', 'DELETE_BUTTON')],
     ])
   )
 
+  defaultReply(ctx)
   ctx.scene.leave()
   //pass the data in to createTask and test
 })
@@ -112,6 +135,13 @@ dateScene.on("callback_query", async (ctx) => {
   if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
       let date;
       date = calendar.clickButtonCalendar(ctx);
+
+      const currentDate = dayjs()
+      const dueDate = dayjs(date)
+      if (dueDate.isBefore(currentDate, 'day')) {
+        return ctx.reply('Invalid date entered. Please try the command again with a current or future date');
+      }
+
       if (date !== -1) {
           ctx.session.date = date;
           const reply = `Title: ${ctx.session.title} \nDue date: ${ctx.session.date}`
@@ -131,10 +161,11 @@ dateScene.on("callback_query", async (ctx) => {
 
   ctx.reply(`Task added successfully.\nTask ID: ${res.id}`, 
     Markup.inlineKeyboard([
-    [Markup.button.callback('Update', 'UPDATE_BUTTON')],
-    [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+    [Markup.button.callback('Update', 'UPDATE_BUTTON'),
+      Markup.button.callback('Delete', 'DELETE_BUTTON')],
   ]))
 
+  defaultReply(ctx)
   ctx.scene.leave()
   //pass the data in to createTask and test
 });
@@ -153,8 +184,7 @@ updateScene.enter(async (ctx) => {
 
       ctx.reply(`Task updated successfully.\nTask ID: ${res.id}`, 
         Markup.inlineKeyboard([
-        [Markup.button.callback('Update', 'UPDATE_BUTTON')],
-        [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+        [Markup.button.callback('Update', 'UPDATE_BUTTON'), Markup.button.callback('Delete', 'DELETE_BUTTON')],
       ]))
     } catch {
       console.error();
@@ -169,8 +199,7 @@ updateScene.enter(async (ctx) => {
 
       ctx.reply(`Task updated successfully.\nTask ID: ${res.id}`, 
         Markup.inlineKeyboard([
-        [Markup.button.callback('Update', 'UPDATE_BUTTON')],
-        [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+        [Markup.button.callback('Update', 'UPDATE_BUTTON'), Markup.button.callback('Delete', 'DELETE_BUTTON')],
       ]))
     } catch {
       console.error();
@@ -185,14 +214,15 @@ updateScene.enter(async (ctx) => {
 
       ctx.reply(`Task updated successfully.\nTask ID: ${res.id}`, 
         Markup.inlineKeyboard([
-        [Markup.button.callback('Update', 'UPDATE_BUTTON')],
-        [Markup.button.callback('Delete', 'DELETE_BUTTON')],
+        [Markup.button.callback('Update', 'UPDATE_BUTTON'), Markup.button.callback('Delete', 'DELETE_BUTTON')],
       ]))
     } catch {
       console.error();
       ctx.reply("Failed to update task. Try again")
     }
   } 
+
+  defaultReply(ctx)
   ctx.scene.leave()
 })
 
@@ -205,6 +235,7 @@ deleteScene.on('text', async (ctx) => {
   const taskId = extractId(ctx.message.text)
   const res = await taskDelete(ctx.chat.id, taskId)
   ctx.reply(res);
+  defaultReply(ctx)
   ctx.scene.leave()
 })
 
@@ -224,7 +255,7 @@ bot.command('create', (ctx) => {
 bot.command('update', (ctx)=>{
   let reply = "Copy and Paste the message I sent when you created the function.\nIt's in the format:\n\n\"Task added successfully.\nTask ID: NGJaZUVpdHZkb2VjV1pDbQ\""
   ctx.reply(reply)
-  const taskId = extractId(ctx.message.text)})
+})
 
 bot.command('delete', async (ctx) => {
   ctx.scene.enter('DELETE_SCENE');
@@ -232,6 +263,20 @@ bot.command('delete', async (ctx) => {
 
 
 //BUTTON PRESS HANDLERS
+bot.action('SIGNIN', async (ctx) => {
+  ctx.reply(await signIn(ctx.chat.id))
+  defaultReply(ctx)
+})
+
+bot.action('CREATE_BUTTON', async (ctx) => {
+  ctx.scene.enter('CREATE_SCENE');
+})
+
+bot.action('LIST_TASKS', async (ctx) => {
+  ctx.reply(await tasksList(ctx.chat.id, 5));
+  defaultReply(ctx)
+})
+
 bot.action('UPDATE_BUTTON', (ctx) => {
   ctx.reply('What would you like to Update',
     Markup.inlineKeyboard([
@@ -270,6 +315,12 @@ bot.action('DATE_UPDATE', (ctx) => {
     if (!/\d{4}-\d{2}-\d{2}/.test(date)) {
       return ctx.reply('Invalid date format. Please use YYYY-MM-DD format.');
     }
+
+    const currentDate = dayjs()
+    const dueDate = dayjs(date)
+    if (dueDate.isBefore(currentDate, 'day')) {
+      return ctx.reply('Invalid date entered. Please try the command again with a current or future date');
+    }
     // ctx.session.args.push(`due:${dayjs(ctx.message.text).format('YYYY-MM-DDTHH:mm:ssZ')}`)
     ctx.session.args = ['due', `${dayjs(ctx.message.text).format('YYYY-MM-DDTHH:mm:ssZ')}`]
     ctx.scene.enter('UPDATE_SCENE')
@@ -279,6 +330,11 @@ bot.action('DATE_UPDATE', (ctx) => {
     if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
       let date;
       date = calendar.clickButtonCalendar(ctx);
+      const currentDate = dayjs()
+      const dueDate = dayjs(date)
+      if (dueDate.isBefore(currentDate, 'day')) {
+        return ctx.reply('Invalid date entered. Please try the command again with a current or future date');
+      }
       if (date !== -1) {
         // let datestr = `due:${dayjs(date).format('YYYY-MM-DDTHH:mm:ssZ')}`
         ctx.session.args = ['due', `${dayjs(date).format('YYYY-MM-DDTHH:mm:ssZ')}`]
@@ -288,13 +344,45 @@ bot.action('DATE_UPDATE', (ctx) => {
   })
 })
 
+bot.action('DELETE_BUTTON', (ctx) => {
+  ctx.reply('Are you sure you want to delete this task?', 
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Yes✅', 'DELETE_YES'), Markup.button.callback('No❌', 'DELETE_NO')],
+    ]))
+  ctx.session.taskId = extractId(ctx.callbackQuery.message.text)
+})
+
+bot.action('DELETE_YES', (ctx) => {
+  taskDelete(ctx.chat.id, taskId)
+    .then(() => ctx.reply('Task successfully deleted.'))
+    .catch(() => {
+      ctx.reply('Failed to delete task. Try again')
+      console.error()
+      }
+      );
+  
+  defaultReply(ctx)
+})
+
+bot.action('DELETE_NO', (ctx) => {
+  ctx.reply('Your task is safe ;)')
+
+  defaultReply(ctx)
+})
 
 
 //Command functions definition
 //use functions for every single thing please
 async function signIn(userId){
-    const res = await authorize(userId).then(listTasks).catch(console.error);
-    return "Sign-in success!\nHere's your next ten tasks\n\n\n" + res;
+    // const res = await authorize(userId).then(listTasks).catch(console.error);
+    try{
+      const res = await authorize(userId).then(listTasks)
+      return "Sign-in success!\nHere's your next ten tasks\n\n\n" + res;
+    } catch(err) {
+      console.log(err)
+      return "Sign-in failed. Please try again"
+    }
+    
 }
 
 async function tasksList(userId, maxRes) {
@@ -327,6 +415,14 @@ async function taskDelete(userId, taskId){
   } catch (error) {
     return "Problem encountered while deleting task";
   }
+}
+
+function defaultReply(ctx){
+  ctx.reply("What would you like to do?\nType command to see all the text commands", 
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Add Task', 'CREATE_BUTTON'), Markup.button.callback('See your next 5 tasks', 'LIST_TASKS')],
+    ])
+  )
 }
 
 
