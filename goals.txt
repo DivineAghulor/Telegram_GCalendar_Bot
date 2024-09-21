@@ -2,16 +2,19 @@ Project Roadmap
 TO-DO:
 Gotta update access rules to the table and to the storage bucket. Make them private and add RLS
 Storage bucket url lasts only a year
+Why cant I just add it manually as a row on the table and then request for that row in particular
+
+
+You can add functionalities of google calendar later
+The forwarded message should automatically become a calendar event, then you add title and date
+
+
+Figure out how to make certain tasks repeated
+
 
 Learn how to use refresh tokens and google api reference here
 https://www.npmjs.com/package/googleapis
 
-The date scene should be changed to include date selector
-
-There should be inline buttons under the "Task Added Successfully" after creating a Task
-The buttons should include Completed (part of update), Update, Delete and Repeat. 
-Since the task id is returned, it just takes the last line and passes it as an argument to the update and delete functions
-This removes the need for a database to be storing user data.
 
 Stage 1:
 Create telegram bot 
@@ -50,12 +53,6 @@ This should also reach the point where it can communicate with other apis instea
 Started: 2:40 pm Tuesday 16th April, 2024. 
 
 
-Prompt 1:
-(I need the code for the backend for a project I'm working on. It's a big project so I'll give it to you one by one
-
-First of all, I need to connect to telegram api to create a bot that I can send a message to and the message reaches the backend as a json file that I can work on. Then I want it to send back as a message but with all the text capitlized
-
-Give me well commented code and explain what every part of the code does and how to use it properly)
 
 
 Things that can be doen with google calendar:
